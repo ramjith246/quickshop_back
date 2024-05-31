@@ -46,6 +46,15 @@ const submissionSchema = new mongoose.Schema({
 });
 const Submission = mongoose.model('Submission', submissionSchema);
 
+app.get('/medicines', async (req, res) => {
+  try {
+    const submissions = await Submission.find();
+    res.json(submissions);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching medicines' });
+  }
+});
+
 // API endpoint to handle form submissions
 app.post('/submit-medicines', upload.array('images', 12), async (req, res) => {
   const { days, phoneNumber } = req.body;
