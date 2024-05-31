@@ -4,39 +4,22 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
-
-// Create a new express app
 const app = express();
+const port = process.env.PORT || 3000;
 
 // Middleware
-const allowedOrigins = [
-  'http://localhost:3000', // Allow local development
-  'https://quickshop-one.vercel.app' // Allow production frontend
-];
-
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified origin.';
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
-  },
-  methods: 'OPTIONS,GET,HEAD,PUT,PATCH,POST,DELETE',
-  credentials: true,
-  allowedHeaders: 'Content-Type,Authorization',
-}));
+app.use(cors());
 app.use(express.json());
 
 // MongoDB connection using environment variables
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-});
+}).then(() => console.log('MongoDB connected'))
+  .catch(err => console.log(err));
 
 // Ensure the uploads directory exists
-const uploadDir = path.join(__dirname, '../uploads');
+const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -64,14 +47,13 @@ const submissionSchema = new mongoose.Schema({
 const Submission = mongoose.model('Submission', submissionSchema);
 
 // API endpoint to handle form submissions
-
-app.post('/api/submit-medicines', upload.array('images', 12), async (req, res) => {
+app.post('/submit-medicines', upload.array('images', 12), async (req, res) => {
   const { days, phoneNumber } = req.body;
   const imageFiles = req.files;
 
   try {
     const images = await Promise.all(imageFiles.map(async (file) => {
-      const filePath = path.join(__dirname, '../', file.path);
+      const filePath = path.join(__dirname, file.path);
       const fileData = await fs.promises.readFile(filePath);
       return {
         data: fileData,
@@ -88,4 +70,7 @@ app.post('/api/submit-medicines', upload.array('images', 12), async (req, res) =
   }
 });
 
-module.exports = app;
+// Start the server
+app.listen(port, () => {
+  console.log(`Server is running on port: ${port}`);
+});
