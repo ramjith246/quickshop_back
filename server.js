@@ -1,5 +1,4 @@
 const express = require('express');
-const multer = require('multer');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const fs = require('fs');
@@ -24,17 +23,6 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Multer setup for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
-  },
-});
-const upload = multer({ storage });
-
 // Define a schema and model for submissions
 const submissionSchema = new mongoose.Schema({
   phoneNumber: String,
@@ -46,85 +34,82 @@ const submissionSchema = new mongoose.Schema({
 });
 const Submission = mongoose.model('Submission', submissionSchema);
 
-app.get('/medicines', async (req, res) => {
+const userSchema = new mongoose.Schema({
+  phoneNumber: String,
+  name: String
+});
+const User = mongoose.model('User', userSchema);
+
+app.get('/user/:phoneNumber', async (req, res) => {
   try {
-    const submissions = await Submission.find();
-    res.json(submissions);
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching medicines' });
-  }
-});
-// API endpoint to mark a submission as done
-app.patch('/medicines/:id/done', (req, res) => {
-  Submission.findByIdAndUpdate(req.params.id, { status: 'done' }, { new: true })
-    .then(updatedSubmission => res.json(updatedSubmission))
-    .catch(err => res.status(400).json('Error: ' + err));
-});
-
-// API endpoint to mark a submission as undone
-app.patch('/medicines/:id/undone', (req, res) => {
-  Submission.findByIdAndUpdate(req.params.id, { status: 'pending' }, { new: true })
-    .then(updatedSubmission => res.json(updatedSubmission))
-    .catch(err => res.status(400).json('Error: ' + err));
-});
-
-// API endpoint to delete a submission
-app.delete('/medicines/:id', (req, res) => {
-  Submission.findByIdAndDelete(req.params.id)
-    .then(() => res.json('Submission deleted'))
-    .catch(err => res.status(400).json('Error: ' + err));
-});
-
-// API endpoint to register a name along with a phone number
-app.post('/register', async (req, res) => {
-  const { phoneNumber, name } = req.body;
-
-  try {
-    // Check if the user already exists
-    const existingSubmission = await Submission.findOne({ phoneNumber });
-
-    if (existingSubmission) {
-      // Update the user's name if they already exist
-      existingSubmission.name = name;
-      await existingSubmission.save();
-      res.status(200).json({ message: 'Name updated successfully' });
+    const user = await User.findOne({ phoneNumber: req.params.phoneNumber });
+    if (user) {
+      res.json(user);
     } else {
-      // Create a new submission if they don't exist
-      const newSubmission = new Submission({ phoneNumber, name });
-      await newSubmission.save();
-      res.status(201).json({ message: 'Name registered successfully' });
+      res.status(404).json({ message: 'User not found' });
     }
   } catch (error) {
-    res.status(400).json({ error: 'Error registering name: ' + error });
+    res.status(500).json({ message: 'Error fetching user data', error });
   }
 });
 
-
-// API endpoint to handle form submissions
-app.post('/submit-medicines', upload.array('images', 12), async (req, res) => {
-  const { days, phoneNumber } = req.body;
-  const imageFiles = req.files;
-
+app.post('/register', async (req, res) => {
+  const { phoneNumber, name } = req.body;
   try {
-    const images = await Promise.all(imageFiles.map(async (file) => {
-      const filePath = path.join(__dirname, file.path);
-      const fileData = await fs.promises.readFile(filePath);
-      return {
-        data: fileData,
-        contentType: file.mimetype
-      };
-    }));
-
-    const newSubmission = new Submission({ phoneNumber, days, images });
-
-    await newSubmission.save();
-    res.status(200).json('Submission successful');
+    const user = new User({ phoneNumber, name });
+    await user.save();
+    res.status(201).json({ message: 'User registered successfully' });
   } catch (error) {
-    res.status(400).json('Error: ' + error);
+    res.status(500).json({ message: 'Error registering user', error });
   }
+});
+
+// Define the route for handling the form submission
+app.post('/submit-medicines', async (req, res) => {
+  const form = new formidable.IncomingForm();
+  form.uploadDir = uploadDir;
+  form.keepExtensions = true;
+
+  form.parse(req, async (err, fields, files) => {
+    if (err) {
+      return res.status(500).json({ message: 'Error parsing form data' });
+    }
+
+    const { phoneNumber, days, description, userName } = fields;
+
+    if (!phoneNumber || !days || !files.images) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    const images = Array.isArray(files.images) ? files.images : [files.images];
+
+    const imagePromises = images.map(file => {
+      return new Promise((resolve, reject) => {
+        fs.readFile(file.path, (err, data) => {
+          if (err) reject(err);
+          resolve({ data, contentType: file.type });
+        });
+      });
+    });
+
+    try {
+      const imageData = await Promise.all(imagePromises);
+      const newSubmission = new Submission({
+        phoneNumber,
+        days,
+        images: imageData,
+        description,
+        userName
+      });
+      await newSubmission.save();
+      res.status(201).json({ message: 'Submission saved successfully' });
+    } catch (error) {
+      res.status(500).json({ message: 'Error saving submission', error });
+    }
+  });
 });
 
 // Start the server
 app.listen(port, () => {
-  console.log(`Server is running on port: ${port}`);
+  console.log(`Server running on port ${port}`);
 });
