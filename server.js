@@ -54,6 +54,26 @@ app.get('/medicines', async (req, res) => {
     res.status(500).json({ message: 'Error fetching medicines' });
   }
 });
+// API endpoint to mark a submission as done
+app.patch('/medicines/:id/done', (req, res) => {
+  Submission.findByIdAndUpdate(req.params.id, { status: 'done' }, { new: true })
+    .then(updatedSubmission => res.json(updatedSubmission))
+    .catch(err => res.status(400).json('Error: ' + err));
+});
+
+// API endpoint to mark a submission as undone
+app.patch('/medicines/:id/undone', (req, res) => {
+  Submission.findByIdAndUpdate(req.params.id, { status: 'pending' }, { new: true })
+    .then(updatedSubmission => res.json(updatedSubmission))
+    .catch(err => res.status(400).json('Error: ' + err));
+});
+
+// API endpoint to delete a submission
+app.delete('/medicines/:id', (req, res) => {
+  Submission.findByIdAndDelete(req.params.id)
+    .then(() => res.json('Submission deleted'))
+    .catch(err => res.status(400).json('Error: ' + err));
+});
 
 // API endpoint to handle form submissions
 app.post('/submit-medicines', upload.array('images', 12), async (req, res) => {
