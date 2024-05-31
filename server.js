@@ -75,6 +75,29 @@ app.delete('/medicines/:id', (req, res) => {
     .catch(err => res.status(400).json('Error: ' + err));
 });
 
+app.post('/register', async (req, res) => {
+  const { phoneNumber, name } = req.body;
+
+  try {
+    // Check if the user already exists
+    const existingUser = await User.findOne({ phoneNumber });
+
+    if (existingUser) {
+      // Update the user's name if they already exist
+      existingUser.name = name;
+      await existingUser.save();
+      res.status(200).json({ message: 'Name updated successfully' });
+    } else {
+      // Create a new user if they don't exist
+      const newUser = new User({ phoneNumber, name });
+      await newUser.save();
+      res.status(201).json({ message: 'User registered successfully' });
+    }
+  } catch (error) {
+    res.status(400).json({ error: 'Error registering user: ' + error });
+  }
+});
+
 // API endpoint to handle form submissions
 app.post('/submit-medicines', upload.array('images', 12), async (req, res) => {
   const { days, phoneNumber } = req.body;
