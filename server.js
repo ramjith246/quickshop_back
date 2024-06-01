@@ -1,4 +1,3 @@
-// server.js
 const express = require('express');
 const multer = require('multer');
 const mongoose = require('mongoose');
@@ -47,7 +46,7 @@ const submissionSchema = new mongoose.Schema({
   name: String,
   description: String,
   address: String,
-  shopName: String,
+  shop: String,
 });
 const Submission = mongoose.model('Submission', submissionSchema);
 
@@ -83,7 +82,7 @@ app.delete('/medicines/:id', (req, res) => {
 
 // API endpoint to handle form submissions
 app.post('/submit-medicines', upload.array('images', 12), async (req, res) => {
-  const { days, phoneNumber, name, description, address, shopName } = req.body;
+  const { days, phoneNumber, name, description, address, shop } = req.body;
   const imageFiles = req.files;
 
   try {
@@ -103,7 +102,7 @@ app.post('/submit-medicines', upload.array('images', 12), async (req, res) => {
       name,
       description,
       address,
-      shopName,
+      shop,
     });
 
     await newSubmission.save();
