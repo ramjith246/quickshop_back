@@ -1,3 +1,4 @@
+// server.js
 const express = require('express');
 const multer = require('multer');
 const mongoose = require('mongoose');
@@ -46,6 +47,7 @@ const submissionSchema = new mongoose.Schema({
   name: String,
   description: String,
   address: String,
+  shopName: String,
 });
 const Submission = mongoose.model('Submission', submissionSchema);
 
@@ -57,6 +59,7 @@ app.get('/medicines', async (req, res) => {
     res.status(500).json({ message: 'Error fetching medicines' });
   }
 });
+
 // API endpoint to mark a submission as done
 app.patch('/medicines/:id/done', (req, res) => {
   Submission.findByIdAndUpdate(req.params.id, { status: 'done' }, { new: true })
@@ -80,7 +83,7 @@ app.delete('/medicines/:id', (req, res) => {
 
 // API endpoint to handle form submissions
 app.post('/submit-medicines', upload.array('images', 12), async (req, res) => {
-  const { days, phoneNumber, name, description, address } = req.body;
+  const { days, phoneNumber, name, description, address, shopName } = req.body;
   const imageFiles = req.files;
 
   try {
@@ -100,6 +103,7 @@ app.post('/submit-medicines', upload.array('images', 12), async (req, res) => {
       name,
       description,
       address,
+      shopName,
     });
 
     await newSubmission.save();
