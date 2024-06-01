@@ -50,6 +50,22 @@ const submissionSchema = new mongoose.Schema({
 });
 const Submission = mongoose.model('Submission', submissionSchema);
 
+// API endpoint to get orders by phone number
+app.get('/orders', async (req, res) => {
+  const { phoneNumber } = req.query;
+
+  if (!phoneNumber) {
+    return res.status(400).json({ message: 'Phone number is required' });
+  }
+
+  try {
+    const submissions = await Submission.find({ phoneNumber });
+    res.json(submissions);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching medicines' });
+  }
+});
+
 app.get('/medicines', async (req, res) => {
   try {
     const submissions = await Submission.find();
