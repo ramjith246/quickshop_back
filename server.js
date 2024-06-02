@@ -107,7 +107,16 @@ const authenticate = (req, res, next) => {
   }
 };
 
-app.get('/medicines', authenticate, async (req, res) => {
+app.get('/medicines', async (req, res) => {
+  try {
+    const submissions = await Submission.find();
+    res.json(submissions);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching medicines' });
+  }
+});
+
+app.get('/medicines-seller', authenticate, async (req, res) => {
   try {
     const medicines = await Medicine.find({ shop: req.shopName });
     res.json(medicines);
