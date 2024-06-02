@@ -7,6 +7,17 @@ const path = require('path');
 const app = express();
 const port = process.env.PORT || 3000;
 
+const shops = [
+  { name: 'Pharmacy One', password: bcrypt.hashSync('password1', 10) },
+  { name: 'Health Plus', password: bcrypt.hashSync('password2', 10) },
+  { name: 'Wellness Store', password: bcrypt.hashSync('password3', 10) },
+  { name: 'Medic Corner', password: bcrypt.hashSync('password4', 10) },
+  { name: 'PharmaCare', password: bcrypt.hashSync('password5', 10) },
+];
+
+const secretKey = 'your_secret_key'; 
+
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -66,10 +77,37 @@ app.get('/orders', async (req, res) => {
   }
 });
 
-app.get('/medicines', async (req, res) => {
+app.post('/login', (req, res) => {
+  const { shopName, password } = req.body;
+  const shop = shops.find((s) => s.name === shopName);
+  if (shop && bcrypt.compareSync(password, shop.password)) {
+    const token = jwt.sign({ shopName: shop.name }, secretKey, { expiresIn: '1h' });
+    res.json({ token });
+  } else {
+    res.status(401).json({ message: 'Invalid credentials' });
+  }
+});
+
+const authenticate = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (token) {
+    jwt.verify(token, secretKey, (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ message: 'Invalid token' });
+      } else {
+        req.shopName = decoded.shopName;
+        next();
+      }
+    });
+  } else {
+    res.status(401).json({ message: 'No token provided' });
+  }
+};
+
+app.get('/medicines', authenticate, async (req, res) => {
   try {
-    const submissions = await Submission.find();
-    res.json(submissions);
+    const medicines = await Medicine.find({ shop: req.shopName });
+    res.json(medicines);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching medicines' });
   }
