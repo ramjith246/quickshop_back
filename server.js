@@ -5,6 +5,9 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const app = express();
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const { Server } = require('http');
 const port = process.env.PORT || 3000;
 
 const shops = [
