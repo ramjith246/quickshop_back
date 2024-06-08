@@ -8,7 +8,7 @@ const app = express();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const http = require('http');
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8080;
 
 const shops = [
   { name: 'Pharmacy One', password: bcrypt.hashSync('password1', 10) },
@@ -26,7 +26,7 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB connection using environment variables
-mongoose.connect(process.env.MONGODB_URI, {
+mongoose.connect('mongodb+srv://ramjithpk2003:dmOZH7UgHNybBsgm@cluster0.agyevl7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 }).then(() => console.log('MongoDB connected'))
@@ -60,9 +60,11 @@ const submissionSchema = new mongoose.Schema({
   name: String,
   description: String,
   address: String,
-  shop: String,
+  shopName: String,
 });
 const Submission = mongoose.model('Submission', submissionSchema);
+
+
 
 // API endpoint to get orders by phone number
 app.get('/orders', async (req, res) => {
@@ -146,11 +148,20 @@ app.delete('/medicines/:id', (req, res) => {
     .catch(err => res.status(400).json('Error: ' + err));
 });
 
+
+app.delete('/delete-all-submissions', async (req, res) => {
+  try {
+    await ASubmission.deleteMany({});
+    res.status(200).json('All submissions deleted successfully');
+  } catch (error) {
+    res.status(400).json('Error: ' + error);
+  }
+});
+
 // API endpoint to handle form submissions
 app.post('/submit-medicines', upload.array('images', 12), async (req, res) => {
-  const { days, phoneNumber, name, description, address, shop } = req.body;
+  const { days, phoneNumber, name, description, address, shopName } = req.body; // Change shop to shopName
   const imageFiles = req.files;
-  console.log(req.body);
 
   try {
     const images = await Promise.all(imageFiles.map(async (file) => {
@@ -163,17 +174,18 @@ app.post('/submit-medicines', upload.array('images', 12), async (req, res) => {
     }));
 
     const newSubmission = new Submission({
-      phoneNumber,
+      phoneNumber, 
       days,
       images,
       name,
       description,
+      shopName, // Change shop to shopName
       address,
-      shop,
     });
 
     await newSubmission.save();
-    res.status(200).json('Submission successful');  
+    res.status(200).json('Submission successful');
+    
   } catch (error) {
     res.status(400).json('Error: ' + error);
   }
