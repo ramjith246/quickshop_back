@@ -114,7 +114,7 @@ app.get('/medicines', async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Error fetching medicines' });
   }
-});
+}); 
 
 app.get('/medicines-seller', authenticate, async (req, res) => {
   try {
@@ -150,6 +150,7 @@ app.delete('/medicines/:id', (req, res) => {
 app.post('/submit-medicines', upload.array('images', 12), async (req, res) => {
   const { days, phoneNumber, name, description, address, shop } = req.body;
   const imageFiles = req.files;
+  console.log(req.body);
 
   try {
     const images = await Promise.all(imageFiles.map(async (file) => {
