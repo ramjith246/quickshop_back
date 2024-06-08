@@ -26,7 +26,7 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB connection using environment variables
-mongoose.connect('mongodb+srv://ramjithpk2003:dmOZH7UgHNybBsgm@cluster0.agyevl7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0', {
+mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 }).then(() => console.log('MongoDB connected'))
