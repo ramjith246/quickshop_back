@@ -4,10 +4,12 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const app = express();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const http = require('http');
 const port = process.env.PORT || 8080;
+
 
 const shops = [
   { name: 'Pharmacy One', password: bcrypt.hashSync('password1', 10) },
@@ -24,7 +26,7 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB connection using environment variables
-mongoose.connect(process.env.MONGODB_URI, {
+mongoose.connect('mongodb+srv://ramjithpk2003:dmOZH7UgHNybBsgm@cluster0.agyevl7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 }).then(() => console.log('MongoDB connected'))
