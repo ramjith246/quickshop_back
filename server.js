@@ -4,7 +4,6 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
-const app = express();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const http = require('http');
@@ -19,7 +18,6 @@ const shops = [
 ];
 
 const secretKey = 'your_secret_key'; 
-
 
 // Middleware
 app.use(cors());
@@ -64,8 +62,6 @@ const submissionSchema = new mongoose.Schema({
 });
 const Submission = mongoose.model('Submission', submissionSchema);
 
-
-
 // API endpoint to get orders by phone number
 app.get('/orders', async (req, res) => {
   const { phoneNumber } = req.query;
@@ -78,7 +74,7 @@ app.get('/orders', async (req, res) => {
     const submissions = await Submission.find({ phoneNumber });
     res.json(submissions);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching medicines' });
+    res.status(500).json({ message: 'Error fetching orders' });
   }
 });
 
@@ -116,51 +112,47 @@ app.get('/medicines', async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Error fetching medicines' });
   }
-}); 
+});
 
-app.get('/medicines-seller', authenticate, async (req, res) => {
+app.get('/medicines-seller/:shopName', authenticate, async (req, res) => {
   try {
-    const medicines = await Medicine.find({ shop: req.shopName });
+    const medicines = await Submission.find({ shopName: req.shopName });
     res.json(medicines);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching medicines' });
   }
 });
 
-// API endpoint to mark a submission as done
-app.patch('/medicines/:id/done', (req, res) => {
-  Submission.findByIdAndUpdate(req.params.id, { status: 'done' }, { new: true })
-    .then(updatedSubmission => res.json(updatedSubmission))
-    .catch(err => res.status(400).json('Error: ' + err));
+app.patch('/medicines/:id/status', authenticate, async (req, res) => {
+  const { status } = req.body;
+  try {
+    const updatedSubmission = await Submission.findByIdAndUpdate(req.params.id, { status }, { new: true });
+    res.json(updatedSubmission);
+  } catch (err) {
+    res.status(400).json('Error: ' + err);
+  }
 });
 
-// API endpoint to mark a submission as undone
-app.patch('/medicines/:id/undone', (req, res) => {
-  Submission.findByIdAndUpdate(req.params.id, { status: 'pending' }, { new: true })
-    .then(updatedSubmission => res.json(updatedSubmission))
-    .catch(err => res.status(400).json('Error: ' + err));
+app.delete('/medicines/:id', authenticate, async (req, res) => {
+  try {
+    await Submission.findByIdAndDelete(req.params.id);
+    res.json('Submission deleted');
+  } catch (err) {
+    res.status(400).json('Error: ' + err);
+  }
 });
-
-// API endpoint to delete a submission
-app.delete('/medicines/:id', (req, res) => {
-  Submission.findByIdAndDelete(req.params.id)
-    .then(() => res.json('Submission deleted'))
-    .catch(err => res.status(400).json('Error: ' + err));
-});
-
 
 app.delete('/delete-all-submissions', async (req, res) => {
   try {
-    await ASubmission.deleteMany({});
+    await Submission.deleteMany({});
     res.status(200).json('All submissions deleted successfully');
   } catch (error) {
     res.status(400).json('Error: ' + error);
   }
 });
 
-// API endpoint to handle form submissions
 app.post('/submit-medicines', upload.array('images', 12), async (req, res) => {
-  const { days, phoneNumber, name, description, address, shopName } = req.body; // Change shop to shopName
+  const { days, phoneNumber, name, description, address, shopName } = req.body;
   const imageFiles = req.files;
 
   try {
@@ -179,19 +171,17 @@ app.post('/submit-medicines', upload.array('images', 12), async (req, res) => {
       images,
       name,
       description,
-      shopName, // Change shop to shopName
+      shopName,
       address,
     });
 
     await newSubmission.save();
     res.status(200).json('Submission successful');
-    
   } catch (error) {
     res.status(400).json('Error: ' + error);
   }
 });
 
-// Start the server
 app.listen(port, () => {
   console.log(`Server is running on port: ${port}`);
 });
