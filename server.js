@@ -153,7 +153,6 @@ app.get('/medicines-seller', async (req, res) => {
   try {
     const medicines = await Submission.find({ shopName });
     res.json(medicines);
-    console.log(shopName);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching medicines' });
   }
