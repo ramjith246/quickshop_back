@@ -159,7 +159,7 @@ app.get('/medicines-seller', async (req, res) => {
   }
 });
 
-app.patch('/medicines/:id/status', authenticate, async (req, res) => {
+app.patch('/medicines/:id/status', async (req, res) => {
   const { status } = req.body;
   try {
     const updatedSubmission = await Submission.findByIdAndUpdate(req.params.id, { status }, { new: true });
