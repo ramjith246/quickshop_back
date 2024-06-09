@@ -8,8 +8,8 @@ const app = express();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const http = require('http');
+const WebSocket = require('ws');
 const port = process.env.PORT || 8080;
-
 
 const shops = [
   { name: 'Pharmacy One', password: bcrypt.hashSync('password1', 10) },
@@ -19,14 +19,14 @@ const shops = [
   { name: 'PharmaCare', password: bcrypt.hashSync('password5', 10) },
 ];
 
-const secretKey = 'your_secret_key'; 
+const secretKey = 'your_secret_key';
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
 // MongoDB connection using environment variables
-mongoose.connect('mongodb+srv://ramjithpk2003:dmOZH7UgHNybBsgm@cluster0.agyevl7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0', {
+mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 }).then(() => console.log('MongoDB connected'))
@@ -63,6 +63,27 @@ const submissionSchema = new mongoose.Schema({
   shopName: String,
 });
 const Submission = mongoose.model('Submission', submissionSchema);
+
+// Create HTTP server and WebSocket server
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
+// Store connected clients
+let clients = [];
+
+wss.on('connection', (ws) => {
+  clients.push(ws);
+  ws.on('close', () => {
+    clients = clients.filter(client => client !== ws);
+  });
+});
+
+// Function to send notifications to specific clients
+const notifyClients = (shopName) => {
+  clients.forEach(client => {
+    client.send(JSON.stringify({ shopName, message: 'New medicine added' }));
+  });
+};
 
 // API endpoint to get orders by phone number
 app.get('/orders', async (req, res) => {
@@ -116,10 +137,23 @@ app.get('/medicines', async (req, res) => {
   }
 });
 
-app.get('/medicines-seller/:shopName', authenticate, async (req, res) => {
+
+app.delete('/medicines/:id', async (req, res) => {
   try {
-    const medicines = await Submission.find({ shopName: req.shopName });
+    await Submission.findByIdAndDelete(req.params.id);
+    res.json('Submission deleted');
+  } catch (err) {
+    res.status(400).json('Error: ' + err);
+  }
+});
+
+app.get('/medicines-seller', async (req, res) => {
+  const { shopName } = req.query; // Extract shopName from query parameters
+
+  try {
+    const medicines = await Submission.find({ shopName });
     res.json(medicines);
+    console.log(shopName);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching medicines' });
   }
@@ -168,7 +202,7 @@ app.post('/submit-medicines', upload.array('images', 12), async (req, res) => {
     }));
 
     const newSubmission = new Submission({
-      phoneNumber, 
+      phoneNumber,
       days,
       images,
       name,
@@ -178,12 +212,13 @@ app.post('/submit-medicines', upload.array('images', 12), async (req, res) => {
     });
 
     await newSubmission.save();
+    notifyClients(shopName); // Notify clients of the new submission
     res.status(200).json('Submission successful');
   } catch (error) {
     res.status(400).json('Error: ' + error);
   }
 });
 
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`Server is running on port: ${port}`);
 });
