@@ -61,6 +61,18 @@ const submissionSchema = new mongoose.Schema({
   description: String,
   address: String,
   shopName: String,
+  details: [
+    {
+      name: String,
+      price: String,
+    },
+  ],
+  totalPrice: Number,
+  status: {
+    type: String,
+    enum: ['pending', 'done'],
+    default: 'pending'
+  }
 });
 const Submission = mongoose.model('Submission', submissionSchema);
 
@@ -215,6 +227,44 @@ app.post('/submit-medicines', upload.array('images', 12), async (req, res) => {
     res.status(200).json('Submission successful');
   } catch (error) {
     res.status(400).json('Error: ' + error);
+  }
+});
+
+
+app.get('/medicines/:id/details', async (req, res) => {
+  try {
+    const medicine = await Submission.findById(req.params.id);
+    if (!medicine) {
+      return res.status(404).json({ message: 'Medicine not found' });
+    }
+    res.json({ details: medicine.details, totalPrice: medicine.totalPrice });
+  } catch (err) {
+    res.status(400).json('Error: ' + err);
+  }
+});
+
+// New API endpoint for submitting medicine details
+app.post('/medicines/:medicineId/details', async (req, res) => {
+  const { medicineId } = req.params;
+  const { details, totalPrice } = req.body;
+
+  if (!details || !Array.isArray(details) || typeof totalPrice !== 'number') {
+    return res.status(400).json({ error: 'Invalid input' });
+  }
+
+  try {
+    const submission = await Submission.findById(medicineId);
+    if (!submission) {
+      return res.status(404).json({ error: 'Medicine not found' });
+    }
+
+    submission.details = details;
+    submission.totalPrice = totalPrice;
+    await submission.save();
+
+    res.status(200).json({ message: 'Medicine details submitted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error submitting medicine details' });
   }
 });
 
